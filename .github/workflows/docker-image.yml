@@ -34,9 +34,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Prepare platform name
-        run: echo "PLATFORM_NAME=${{ matrix.platform }}" | sed 's|/|-|g' >> $GITHUB_ENV
-
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -62,8 +59,6 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          # --- REMINDER 1 ---
-          # If your Dockerfile is in a subdirectory, adjust these paths.
           context: .
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
@@ -74,13 +69,13 @@ jobs:
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
+          # This command strips the 'sha256:' prefix to create the filename
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          # This name is now unique for each platform (e.g., digests-linux-amd64)
-          name: digests-${{ env.PLATFORM_NAME }}
+          name: digests-${{ matrix.platform }} # Use matrix.platform for uniqueness
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -118,9 +113,10 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
+          # This command now correctly prepends 'sha256:' to each digest hash
           docker buildx imagetools create \
             --tag ${{ steps.meta.outputs.tags }} \
-            $(printf 'ghcr.io/${{ github.repository }}@%s ' *)
+            $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
 
   cleanup:
     runs-on: ubuntu-latest
