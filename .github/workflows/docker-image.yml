@@ -63,14 +63,18 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          # IMPORTANT: Adjust 'context' and 'file' if your Dockerfile is in a subdirectory
+          # --- IMPORTANT ---
+          # If your Dockerfile is in a subdirectory, adjust these paths.
+          # For example:
+          # context: ./your-subdirectory
+          # file: ./your-subdirectory/Dockerfile
           context: .
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
-          # Use the dynamically generated labels and tags from the 'meta' step
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ steps.meta.outputs.tags }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          # The 'tags' parameter is removed here to fix the conflict.
+          # The image name is now specified in 'outputs' for the digest push.
+          outputs: type=image,name=${{ steps.meta.outputs.images }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
