@@ -34,6 +34,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Prepare platform name
+        run: echo "PLATFORM_NAME=${{ matrix.platform }}" | sed 's|/|-|g' >> $GITHUB_ENV
+
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -59,13 +62,12 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
+          # --- REMINDER 1 ---
+          # If your Dockerfile is in a subdirectory, adjust these paths.
           context: .
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          # --- FINAL FIX ---
-          # We explicitly provide the image name here using a reliable variable,
-          # bypassing the previous issue where the name was empty.
           outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -77,6 +79,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
+          # This name is now unique for each platform (e.g., digests-linux-amd64)
           name: digests-${{ env.PLATFORM_NAME }}
           path: /tmp/digests/*
           if-no-files-found: error
