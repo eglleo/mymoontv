@@ -34,9 +34,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Prepare platform name
-        run: echo "PLATFORM_NAME=${{ matrix.platform }}" | sed 's|/|-|g' >> $GITHUB_ENV
-
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -54,7 +51,6 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # This line dynamically uses your repository name, e.g., ghcr.io/eglleo/mymoontv
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ github.event.inputs.tag || 'latest' }}
@@ -63,18 +59,14 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          # --- IMPORTANT ---
-          # If your Dockerfile is in a subdirectory, adjust these paths.
-          # For example:
-          # context: ./your-subdirectory
-          # file: ./your-subdirectory/Dockerfile
           context: .
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          # The 'tags' parameter is removed here to fix the conflict.
-          # The image name is now specified in 'outputs' for the digest push.
-          outputs: type=image,name=${{ steps.meta.outputs.images }},push-by-digest=true,name-canonical=true,push=true
+          # --- FINAL FIX ---
+          # We explicitly provide the image name here using a reliable variable,
+          # bypassing the previous issue where the name was empty.
+          outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
